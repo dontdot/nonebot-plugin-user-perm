@@ -1,18 +1,16 @@
 import re
 import json
-from pathlib import Path
-from pydantic import BaseModel
 from typing import ClassVar
-from pydantic import Field
+from pathlib import Path
 
-from nonebot import require, get_driver, logger
+from nonebot import logger, require, get_driver
+from pydantic import Field, BaseModel
 from nonebot.plugin import PluginMetadata
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
 
 require("nonebot_plugin_localstore")
 
 import nonebot_plugin_localstore as store
-
 
 __plugin_meta__ = PluginMetadata(
     name="user_perm",
@@ -50,7 +48,7 @@ class PermStore:
             cls._save(PermConfig().model_dump())
             return
         try:
-            with open(data_file_path, "r", encoding="utf-8") as f:
+            with open(data_file_path, encoding="utf-8") as f:
                 data = json.load(f)
                 if "group" in data:
                     data["group"] = {
@@ -84,7 +82,7 @@ class PermStore:
 
     @classmethod
     def _fix_data(cls):
-        with open(data_file_path, "r", encoding="utf-8") as f:
+        with open(data_file_path, encoding="utf-8") as f:
             err_data = f.read()
         fixed = re.sub(r"(\d+)(?=\s*:)", r'"\1"', err_data)
         logger.debug(f"err_data:{err_data}")
