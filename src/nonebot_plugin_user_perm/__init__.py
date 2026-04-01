@@ -1,45 +1,134 @@
-from nonebot import logger, require
-from nonebot.plugin import PluginMetadata, inherit_supported_adapters
+import re
+import json
+from pathlib import Path
+from pydantic import BaseModel
+from typing import Dict, List
 
-require("nonebot_plugin_uninfo")
-require("nonebot_plugin_alconna")
+from nonebot import require, get_driver, logger
+from nonebot.plugin import PluginMetadata
+from nonebot.permission import SUPERUSER
+from nonebot.adapters.onebot.v11 import GroupMessageEvent
+
 require("nonebot_plugin_localstore")
-require("nonebot_plugin_apscheduler")
-from .config import Config
+
+import nonebot_plugin_localstore as store
+
 
 __plugin_meta__ = PluginMetadata(
-    name="名称",
-    description="描述",
-    usage="用法",
-    type="application",  # library
+    name="user_perm",
+    description="为其他nonebot插件提供q群普通用户权限管理",
+    usage="给响应器的rule或者permission添加isPermUser来检查",
+    type="library",  # library
     homepage="https://github.com/dontdot/nonebot-plugin-user-perm",
-    config=Config,
-    supported_adapters=inherit_supported_adapters(
-        "nonebot_plugin_alconna", "nonebot_plugin_uninfo"
-    ),
-    # supported_adapters={"~onebot.v11"}, # 仅 onebot
-    extra={"author": "dontdot <your@mail.com>"},
+    supported_adapters={"~onebot.v11"}, # 仅 onebot
+    extra={"author": "dontdot 55482264+dontdot@users.noreply.github.com"},
 )
 
-from arclet.alconna import Args, Option, Alconna, Arparma, Subcommand
-from nonebot_plugin_alconna import on_alconna
-from nonebot_plugin_alconna.uniseg import UniMessage
+driver = get_driver()
 
-pip = on_alconna(
-    Alconna(
-        "pip",
-        Subcommand(
-            "install",
-            Args["package", str],
-            Option("-r|--requirement", Args["file", str]),
-            Option("-i|--index-url", Args["url", str]),
-        ),
-    )
-)
+data_dir = store.get_plugin_data_dir()
+
+data_file_path: Path = data_dir / "user_perm.json"
 
 
-@pip.handle()
-async def _(result: Arparma):
-    package: str = result.other_args["package"]
-    logger.info(f"installing {package}")
-    await UniMessage.text(package).send()
+class Users(BaseModel):
+    users: List[int] = []
+
+
+class PermConfig(BaseModel):
+    super: List[int] = []
+    group: Dict[int, Users] = {}
+
+
+class PermStore:
+    perm: dict = {}
+
+    @classmethod
+    def _load(cls):
+        data_file_path.parent.mkdir(parents=True, exist_ok=True)
+        if not data_file_path.exists():
+            cls._save(PermConfig().model_dump())
+            return
+        try:
+            with open(data_file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if "group" in data:
+                    data["group"] = {
+                        int(k): cls._sw_value_int(v) for k, v in data["group"].items()
+                    }
+                cls.perm = data
+                return
+        except (json.JSONDecodeError, ValueError) as e:
+            # 尝试修复读取的数据
+            logger.error(f"读取数据文件出错：\n   {e}")
+            cls._fix_data()
+
+    @classmethod
+    def _save(cls, data=None):
+        data_file_path.parent.mkdir(parents=True, exist_ok=True)
+        _data = data if data else cls.perm
+        if "group" in _data:
+            _data["group"] = {
+                str(k): cls._sw_value_int(v) for k, v in _data["group"].items()
+            }
+        with open(data_file_path, "w", encoding="utf-8") as f:
+            json.dump(_data, f, indent=4, ensure_ascii=True)
+
+    @classmethod
+    def _sw_value_int(cls, data: List):
+        return [int(i) for i in data]
+
+    @classmethod
+    def _sw_value_str(cls, data: List):
+        return [str(i) for i in data]
+
+    @classmethod
+    def _fix_data(cls):
+        with open(data_file_path, "r", encoding="utf-8") as f:
+            err_data = f.read()
+        fixed = re.sub(r"(\d+)(?=\s*:)", r'"\1"', err_data)
+        logger.debug(f"err_data:{err_data}")
+        logger.debug(f"fixed:{fixed}")
+        try:
+            fixed_data = json.loads(fixed)
+            logger.debug(f"fixed_data:{fixed_data}")
+            fixed_data["group"] = {
+                int(k): cls._sw_value_int(v) for k, v in fixed_data["group"].items()
+            }
+            cls.perm = fixed_data
+            cls._save()
+            logger.info("Json格式已修复")
+        except:
+            # 修复失败，使用默认
+            logger.info("数据Json文件修复失败，使用默认")
+            cls.perm = PermConfig().model_dump()
+            cls._save()
+
+    @classmethod
+    async def get_user_perm(cls, group_id) -> List[int]:
+        _users = []
+        _users.extend(cls.perm["group"].get(group_id, []))
+        _users.extend(cls.perm.get("super", []))
+        _users = list(set(_users))
+        return _users
+
+
+async def isPermUser(event: GroupMessageEvent) -> bool:
+    user = event.user_id
+    try:
+        if user in (_premUser := await PermStore.get_user_perm(event.group_id)):
+            return True
+        else:
+            return False
+    except Exception as e:
+        logger.error(f"PermUser判断失败：\n{e}")
+        return False
+
+
+@driver.on_startup
+async def _():
+    PermStore._load()
+    logger.info(f"额外用户权限已启动，具体如下：\n{PermStore.perm}")
+
+
+__all__ = ["PermStore", "isPermUser"]
