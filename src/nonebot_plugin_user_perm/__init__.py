@@ -2,11 +2,11 @@ import re
 import json
 from pathlib import Path
 from pydantic import BaseModel
-from typing import Dict, List
+from typing import ClassVar
+from pydantic import Field
 
 from nonebot import require, get_driver, logger
 from nonebot.plugin import PluginMetadata
-from nonebot.permission import SUPERUSER
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
 
 require("nonebot_plugin_localstore")
@@ -32,16 +32,16 @@ data_file_path: Path = data_dir / "user_perm.json"
 
 
 class Users(BaseModel):
-    users: List[int] = []
+    users: list[int] = Field(default_factory=list)
 
 
 class PermConfig(BaseModel):
-    super: List[int] = []
-    group: Dict[int, Users] = {}
+    super: list[int] = Field(default_factory=list)
+    group: dict[int, Users] = Field(default_factory=dict)
 
 
 class PermStore:
-    perm: dict = {}
+    perm: ClassVar[dict] = {}
 
     @classmethod
     def _load(cls):
@@ -75,11 +75,11 @@ class PermStore:
             json.dump(_data, f, indent=4, ensure_ascii=True)
 
     @classmethod
-    def _sw_value_int(cls, data: List):
+    def _sw_value_int(cls, data: list):
         return [int(i) for i in data]
 
     @classmethod
-    def _sw_value_str(cls, data: List):
+    def _sw_value_str(cls, data: list):
         return [str(i) for i in data]
 
     @classmethod
@@ -98,14 +98,14 @@ class PermStore:
             cls.perm = fixed_data
             cls._save()
             logger.info("Json格式已修复")
-        except:
+        except Exception as e:
             # 修复失败，使用默认
-            logger.info("数据Json文件修复失败，使用默认")
+            logger.info(f"数据Json文件修复失败{e}，使用默认")
             cls.perm = PermConfig().model_dump()
             cls._save()
 
     @classmethod
-    async def get_user_perm(cls, group_id) -> List[int]:
+    async def get_user_perm(cls, group_id) -> list[int]:
         _users = []
         _users.extend(cls.perm["group"].get(group_id, []))
         _users.extend(cls.perm.get("super", []))
