@@ -15,7 +15,19 @@
 
 ## 📖 介绍
 
-这里是插件的详细介绍部分
+设置群聊的某些普通用户使用插件的某个权限命令！
+
+使用onebotv11适配器提供 `isPermUser` 函数给其他插件使用在响应器中
+
+注意：`isPermUser`只接受群消息事件`GroupMessageEvent` 
+
+> `isPermUser` 将判断这条消息发送人是否是该群聊设置的特定普通用户 + super用户
+
+默认数据格式：{'super': [ ], 'group': { } } 
+
+> 例如：{'super': [12345], 'group': {'某个qq群号': [112233, 223344]}} \
+> 每个[ ]里填入普通用户的qq号(int类型)
+
 
 ## 💿 安装
 
@@ -88,19 +100,38 @@
 
 ## ⚙️ 配置
 
-在 nonebot2 项目的`.env`文件中添加下表中的必填配置
+使用`nonebot-plugin-localstore`持久化保存数据
+可在 nonebot2 项目的`.env`文件中添加以下配置，使数据文件保存在bot项目下的`data`目录
 
-| 配置项  | 必填  | 默认值 |   说明   |
-| :-----: | :---: | :----: | :------: |
-| 配置项1 |  是   |   无   | 配置说明 |
-| 配置项2 |  否   |   无   | 配置说明 |
+> LOCALSTORE_USE_CWD=True
+
+
 
 ## 🎉 使用
-### 指令表
-| 指令  | 权限  | 需要@ | 范围  |   说明   |
-| :---: | :---: | :---: | :---: | :------: |
-| 指令1 | 主人  |  否   | 私聊  | 指令说明 |
-| 指令2 | 群员  |  是   | 群聊  | 指令说明 |
+
+示例：在其他插件上使用
+
+```python
+...
+from nonebot import require
+require("nonebot_plugin_apscheduler")
+from nonebot_plugin_extrauserperm import isPermUser
+
+weather = on_command("天气", permission=isPermUser)` 
+```
+
+or 
+
+```python
+...
+from nonebot import require
+require("nonebot_plugin_apscheduler")
+from nonebot_plugin_extrauserperm import isPermUser
+
+any_permission = SUPERUSER | GROUP_ADMIN | GROUP_OWNER | Permission(isPermUser)
+weather = on_command("天气", permission=any_permission)
+```
+
 
 ### 🎨 效果图
 如果有效果图的话
