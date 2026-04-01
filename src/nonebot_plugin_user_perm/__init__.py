@@ -18,7 +18,7 @@ __plugin_meta__ = PluginMetadata(
     usage="给响应器的rule或者permission添加isPermUser来检查",
     type="library",  # library
     homepage="https://github.com/dontdot/nonebot-plugin-user-perm",
-    supported_adapters={"~onebot.v11"}, # 仅 onebot
+    supported_adapters={"~onebot.v11"},  # 仅 onebot
     extra={"author": "dontdot 55482264+dontdot@users.noreply.github.com"},
 )
 
