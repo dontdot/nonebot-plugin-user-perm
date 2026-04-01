@@ -114,8 +114,8 @@
 ```python
 ...
 from nonebot import require
-require("nonebot_plugin_apscheduler")
-from nonebot_plugin_extrauserperm import isPermUser
+require("nonebot_plugin_user_perm")
+from nonebot_plugin_user_perm import isPermUser
 
 weather = on_command("天气", permission=isPermUser)` 
 ```
@@ -125,8 +125,8 @@ or
 ```python
 ...
 from nonebot import require
-require("nonebot_plugin_apscheduler")
-from nonebot_plugin_extrauserperm import isPermUser
+require("nonebot_plugin_user_perm")
+from nonebot_plugin_user_perm import isPermUser
 
 any_permission = SUPERUSER | GROUP_ADMIN | GROUP_OWNER | Permission(isPermUser)
 weather = on_command("天气", permission=any_permission)
