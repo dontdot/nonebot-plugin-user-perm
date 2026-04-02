@@ -26,7 +26,7 @@ driver = get_driver()
 
 data_dir = store.get_plugin_data_dir()
 
-data_file_path: Path = data_dir / "user_perm.json"
+data_file_path: Path = data_dir / "perm_users.json"
 
 
 class Users(BaseModel):
@@ -39,7 +39,7 @@ class PermConfig(BaseModel):
 
 
 class PermStore:
-    perm: ClassVar[dict] = {}
+    _perm: ClassVar[dict] = {}
 
     @classmethod
     def _load(cls):
@@ -54,7 +54,7 @@ class PermStore:
                     data["group"] = {
                         int(k): cls._sw_value_int(v) for k, v in data["group"].items()
                     }
-                cls.perm = data
+                cls._perm = data
                 return
         except (json.JSONDecodeError, ValueError) as e:
             # 尝试修复读取的数据
@@ -64,7 +64,7 @@ class PermStore:
     @classmethod
     def _save(cls, data=None):
         data_file_path.parent.mkdir(parents=True, exist_ok=True)
-        _data = data if data else cls.perm
+        _data = data if data else cls._perm
         if "group" in _data:
             _data["group"] = {
                 str(k): cls._sw_value_int(v) for k, v in _data["group"].items()
@@ -93,40 +93,74 @@ class PermStore:
             fixed_data["group"] = {
                 int(k): cls._sw_value_int(v) for k, v in fixed_data["group"].items()
             }
-            cls.perm = fixed_data
+            cls._perm = fixed_data
             cls._save()
             logger.info("Json格式已修复")
         except Exception as e:
             # 修复失败，使用默认
             logger.info(f"数据Json文件修复失败{e}，使用默认")
-            cls.perm = PermConfig().model_dump()
+            cls._perm = PermConfig().model_dump()
             cls._save()
 
-    @classmethod
-    async def get_user_perm(cls, group_id) -> list[int]:
+
+async def get_users(group_id) -> list[int]:
+    try:
         _users = []
-        _users.extend(cls.perm["group"].get(group_id, []))
-        _users.extend(cls.perm.get("super", []))
+        _users.extend(PermStore._perm["group"].get(group_id, []))
+        _users.extend(PermStore._perm.get("super", []))
         _users = list(set(_users))
         return _users
+    except Exception as e:
+        logger.error(f"获取群'{group_id}'的权限用户出错，\n {e}")
+        return []
 
 
-async def isPermUser(event: GroupMessageEvent) -> bool:
-    user = event.user_id
+async def is_perm_user(event: GroupMessageEvent) -> bool:
     try:
-        if user in (_premUser := await PermStore.get_user_perm(event.group_id)):
+        user = event.user_id
+        if user in (_premUser := await get_users(event.group_id)):
             return True
         else:
             return False
     except Exception as e:
-        logger.error(f"PermUser判断失败：\n{e}")
+        logger.error(f"PermUser判断失败： \n {e}")
+        return False
+
+
+async def add_user(user_id, event: GroupMessageEvent) -> bool:
+    try:
+        user_id = int(user_id)
+        user_set= set(await get_users(event.group_id))
+        user_set.add(user_id)
+        _users = list(user_set)
+        PermStore._perm["group"][event.group_id] = _users
+        logger.info(f"<success> 群'{event.group_id}'，用户'{user_id}'已添加")
+        PermStore._save()
+        return True
+    except Exception as e:
+        logger.error(f"群'{event.group_id}'用户添加失败：\n{e}")
+        return False
+
+
+async def del_user(user_id, event: GroupMessageEvent) -> bool:
+    try:
+        user_id = int(user_id)
+        user_set= set(await get_users(event.group_id))
+        user_set.discard(user_id)
+        _users = list(user_set)
+        PermStore._perm["group"][event.group_id] = _users
+        logger.info(f"<success> 群'{event.group_id}'，用户'{user_id}'已移除")
+        PermStore._save()
+        return True
+    except Exception as e:
+        logger.error(f"群'{event.group_id}'用户移除失败： \n {e}")
         return False
 
 
 @driver.on_startup
 async def _():
     PermStore._load()
-    logger.info(f"额外用户权限已启动，具体如下：\n{PermStore.perm}")
+    logger.info(f"额外用户权限已启动，具体如下： \n {PermStore._perm}")
 
 
-__all__ = ["PermStore", "isPermUser"]
+__all__ = ["add_user", "del_user", "get_users", "is_perm_user"]
