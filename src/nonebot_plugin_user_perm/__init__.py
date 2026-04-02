@@ -130,7 +130,7 @@ async def is_perm_user(event: GroupMessageEvent) -> bool:
 async def add_user(user_id, event: GroupMessageEvent) -> bool:
     try:
         user_id = int(user_id)
-        user_set= set(await get_users(event.group_id))
+        user_set = set(await get_users(event.group_id))
         user_set.add(user_id)
         _users = list(user_set)
         PermStore._perm["group"][event.group_id] = _users
