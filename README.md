@@ -17,11 +17,11 @@
 
 设置群聊的某些普通用户使用插件的某个权限命令！
 
-使用onebotv11适配器提供 `isPermUser` 函数给其他插件使用在响应器中
+使用onebotv11适配器提供 `is_perm_user` 函数给其他插件使用在响应器中
 
-注意：`isPermUser`只接受群消息事件`GroupMessageEvent` 
+注意：`is_perm_user`只接受群消息事件`GroupMessageEvent` 
 
-> `isPermUser` 将判断这条消息发送人是否是该群聊设置的特定普通用户 + super用户
+> `is_perm_user` 将判断这条消息发送人是否是该群聊设置的特定普通用户 + super用户
 
 默认数据格式：{'super': [ ], 'group': { } } 
 
@@ -109,15 +109,24 @@
 
 ## 🎉 使用
 
+提供以下4个方法：
+
+|     方法     |    参数   |                说明                |
+| :----------: | :-------: | :-------------------------------: |
+|   add_user   |  user_id  |      在当前群聊增加一个权限用户     |
+|   del_user   |  user_id  |      在当前群聊删除一个权限用户     |
+| is_perm_user |     无    | 检查当前信息发送人是否是在权限用户中 |
+|   get_users  |  group_id |         获取该群聊的权限用户        |
+
 示例：在其他插件上使用
 
 ```python
 ...
 from nonebot import require
 require("nonebot_plugin_user_perm")
-from nonebot_plugin_user_perm import isPermUser
+from nonebot_plugin_user_perm import is_perm_user
 
-weather = on_command("天气", permission=isPermUser)` 
+weather = on_command("天气", permission=is_perm_user)` 
 ```
 
 or 
@@ -128,7 +137,7 @@ from nonebot import require
 require("nonebot_plugin_user_perm")
 from nonebot_plugin_user_perm import isPermUser
 
-any_permission = SUPERUSER | GROUP_ADMIN | GROUP_OWNER | Permission(isPermUser)
+any_permission = SUPERUSER | GROUP_ADMIN | GROUP_OWNER | Permission(is_perm_user)
 weather = on_command("天气", permission=any_permission)
 ```
 
