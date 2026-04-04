@@ -103,7 +103,7 @@ class PermStore:
             cls._save()
 
 
-async def get_users(group_id, mode: int=0) -> list[int]:
+async def get_users(group_id, mode: int = 0) -> list[int]:
     """
     ; group_id: 群号
     ; mode: 0-包含global用户，1-排除global用户
