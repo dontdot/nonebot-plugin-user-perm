@@ -32,7 +32,7 @@
 ## 💿 安装
 
 <details open>
-<summary>使用 nb-cli 安装</summary>
+<summary>【XXX】使用 nb-cli 安装</summary>
 在 nonebot2 项目的根目录下打开命令行, 输入以下指令即可安装
 
     nb plugin install nonebot-plugin-user-perm --upgrade
@@ -116,7 +116,7 @@
 |   add_user   |  user_id  |      在当前群聊增加一个权限用户     |
 |   del_user   |  user_id  |      在当前群聊删除一个权限用户     |
 | is_perm_user |     无    | 检查当前信息发送人是否是在权限用户中 |
-|   get_users  |  group_id |         获取该群聊的权限用户        |
+|   get_users  |  group_id, mode | 获取该群聊的权限用户, mode默认为0，包含global用户，mode=1则排除global用户 |
 
 示例：在其他插件上使用
 
