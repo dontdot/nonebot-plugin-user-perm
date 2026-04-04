@@ -103,11 +103,16 @@ class PermStore:
             cls._save()
 
 
-async def get_users(group_id) -> list[int]:
+async def get_users(group_id, mode: int=0) -> list[int]:
+    """
+    ; group_id: 群号
+    ; mode: 0-包含global用户，1-排除global用户
+    """
     try:
         _users = []
         _users.extend(PermStore._perm["group"].get(group_id, []))
-        _users.extend(PermStore._perm.get("super", []))
+        if mode == 1:
+            _users.extend(PermStore._perm.get("super", []))
         _users = list(set(_users))
         return _users
     except Exception as e:
