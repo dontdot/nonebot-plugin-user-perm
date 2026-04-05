@@ -3,10 +3,15 @@ import json
 from typing import ClassVar
 from pathlib import Path
 
-from nonebot import logger, require, get_driver, on_notice
+from nonebot import logger, require, on_notice, get_driver
 from pydantic import Field, BaseModel
 from nonebot.plugin import PluginMetadata
-from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, GroupIncreaseNoticeEvent, GroupDecreaseNoticeEvent
+from nonebot.adapters.onebot.v11 import (
+    Bot,
+    GroupMessageEvent,
+    GroupDecreaseNoticeEvent,
+    GroupIncreaseNoticeEvent,
+)
 
 require("nonebot_plugin_localstore")
 
@@ -125,9 +130,9 @@ async def get_users(group_id, mode: int = 0) -> list[int]:
         excluded = set(_users) - set([uid for uid in _users if uid in _group_mem_cache])
         if excluded:
             logger.info(f"排除不在群聊的用户: {excluded}")
-            
+
         return _users
-    
+
     except Exception as e:
         logger.error(f"获取群'{group_id}'的权限用户出错，\n {e}")
         return []
@@ -182,7 +187,7 @@ class GroupMemberCache:
     def update(cls, group_id: int, members: list[int]):
         """更新缓存"""
         cls._groups_cache[group_id] = members
-    
+
     @classmethod
     def get(cls, group_id: int) -> list[int]:
         """获取缓存"""
@@ -231,4 +236,4 @@ async def startup(bot):
 driver.on_bot_connect(startup)
 
 
-__all__ = ["add_user", "del_user", "get_users", "get_group_mem_cache", "is_perm_user"]
+__all__ = ["add_user", "del_user", "get_group_mem_cache", "get_users", "is_perm_user"]
