@@ -45,7 +45,9 @@ class PermStore:
     def _load(cls):
         data_file_path.parent.mkdir(parents=True, exist_ok=True)
         if not data_file_path.exists():
-            cls._save(PermConfig().model_dump())
+            _default_data = PermConfig().model_dump()
+            cls._perm = _default_data
+            cls._save(_default_data)
             return
         try:
             with open(data_file_path, encoding="utf-8") as f:
