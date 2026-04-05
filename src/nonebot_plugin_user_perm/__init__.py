@@ -113,7 +113,7 @@ async def get_users(group_id, mode: int = 0) -> list[int]:
     try:
         _users = []
         _users.extend(PermStore._perm["group"].get(group_id, []))
-        if mode == 1:
+        if mode == 0:
             _users.extend(PermStore._perm.get("super", []))
         _users = list(set(_users))
         return _users
