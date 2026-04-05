@@ -208,7 +208,7 @@ async def updata_group_mem_cache(bot: Bot, event: GroupIncreaseNoticeEvent | Gro
     for group_id in groups_id:
         _users = [id["user_id"] for id in (await bot.get_group_member_list(group_id=group_id))]
         GroupMemberCache.update(group_id, _users)
-        logger.success(f"更新群聊成员列表缓存 > \n<{group_id}>\n{_users}")
+        # logger.success(f"更新群聊成员列表缓存 > \n<{group_id}>\n{_users}")
 
 
 async def get_group_mem_cache(group_id) -> list:
