@@ -3,10 +3,10 @@ import json
 from typing import ClassVar
 from pathlib import Path
 
-from nonebot import logger, require, get_driver
+from nonebot import logger, require, get_driver, on_notice
 from pydantic import Field, BaseModel
 from nonebot.plugin import PluginMetadata
-from nonebot.adapters.onebot.v11 import GroupMessageEvent
+from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, GroupIncreaseNoticeEvent, GroupDecreaseNoticeEvent
 
 require("nonebot_plugin_localstore")
 
@@ -116,7 +116,18 @@ async def get_users(group_id, mode: int = 0) -> list[int]:
         if mode == 0:
             _users.extend(PermStore._perm.get("super", []))
         _users = list(set(_users))
+
+        # 排除不在群聊里的账号
+        _group_mem_cache = set(await get_group_mem_cache(group_id))
+        _users = [uid for uid in _users if uid in _group_mem_cache]
+
+        # 记录被排除的用户
+        excluded = set(_users) - set([uid for uid in _users if uid in _group_mem_cache])
+        if excluded:
+            logger.info(f"排除不在群聊的用户: {excluded}")
+            
         return _users
+    
     except Exception as e:
         logger.error(f"获取群'{group_id}'的权限用户出错，\n {e}")
         return []
@@ -164,10 +175,60 @@ async def del_user(user_id, event: GroupMessageEvent) -> bool:
         return False
 
 
+class GroupMemberCache:
+    _groups_cache: dict[int, list[int]] = {}
+
+    @classmethod
+    def update(cls, group_id: int, members: list[int]):
+        """更新缓存"""
+        cls._groups_cache[group_id] = members
+    
+    @classmethod
+    def get(cls, group_id: int) -> list[int]:
+        """获取缓存"""
+        return cls._groups_cache.get(group_id, [])
+
+
+group_notice = on_notice(priority=1)
+
+
+@group_notice.handle()
+async def updata_group_mem_cache(bot: Bot, event: GroupIncreaseNoticeEvent | GroupDecreaseNoticeEvent | None):
+    if isinstance(event, GroupIncreaseNoticeEvent|GroupDecreaseNoticeEvent):
+        logger.info(f"检测到群聊<{event.group_id}>成员增加，更新群聊成员列表缓存")
+        groups_id = [event.group_id]
+    elif event is None:
+        groups_id = [gid for gid in PermStore._perm["group"].keys()]
+
+    for group_id in groups_id:
+        _users = [id["user_id"] for id in (await bot.get_group_member_list(group_id=group_id))]
+        GroupMemberCache.update(group_id, _users)
+        logger.success(f"更新群聊成员列表缓存 > \n<{group_id}>\n{_users}")
+
+
+async def get_group_mem_cache(group_id) -> list:
+    return GroupMemberCache.get(group_id)
+
+
 @driver.on_startup
 async def _():
     PermStore._load()
     logger.info(f"额外用户权限已启动，具体如下： \n {PermStore._perm}")
 
 
-__all__ = ["add_user", "del_user", "get_users", "is_perm_user"]
+async def startup(bot):
+    """插件启动时清理已入群用户"""
+    try:
+        # global driver
+        # bots = driver.bots
+        # if bots:
+        #     bot = next(iter(bots.values()))
+        await updata_group_mem_cache(bot, event=None)
+    except Exception as e:
+        logger.error(f"群聊成员缓存获取失败: {e}")
+
+
+driver.on_bot_connect(startup)
+
+
+__all__ = ["add_user", "del_user", "get_users", "get_group_mem_cache", "is_perm_user"]
